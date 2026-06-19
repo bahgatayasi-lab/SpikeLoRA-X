@@ -30,7 +30,7 @@ The script implements the main SpikeLoRA-X workflow:
 
 ## Datasets
 
-The main CAEPIA experiments use:
+The main  experiments use:
 
 - **Solar Radiation (SR)**: `Palestine-Solar.csv`, target variable `GHI`.
 - **Wind Power (WP)**: `Turky-Wind-power-Turbine.csv`, target variable `LV ActivePower (kW)`.
@@ -120,14 +120,6 @@ Expected output files include:
 - `spikelora_x_outputs/Attribution_heatmap_WP.csv`
 - `spikelora_x_outputs/Attribution_heatmap_WP.png`
 
-## Capturing the exact environment
-
-For camera-ready reproducibility, run `environment_capture.py` in the same environment used for the final experiments and copy the printed values into the manuscript.
-
-```bash
-python environment_capture.py
-```
-
 ## Relation to the original SpikeLoRA repository
 
 SpikeLoRA-X is not a replacement for SpikeLoRA. The original SpikeLoRA repository provides the parameter-efficient spiking forecasting framework and cleaned benchmark datasets. SpikeLoRA-X adds a Responsible-AI post-hoc layer around that backbone, including attribution, attribution-fidelity checks, physical-plausibility checks, and spike-activity reporting.
@@ -140,7 +132,6 @@ Original SpikeLoRA-SNN repository:
 
 If you use this code, please cite the SpikeLoRA-X CAEPIA/LNAI paper and the original SpikeLoRA paper/repository.
 
-```bibtex
 @inproceedings{ayasi2026spikelorax,
   title     = {SpikeLoRA-X: Explainable, Responsible, and Energy-Efficient Spiking Neural Networks for Multi-Horizon Renewable-Energy Forecasting at the Edge},
   author    = {Ayasi, Bahgat Waleed Deeb and coauthors},
@@ -149,7 +140,6 @@ If you use this code, please cite the SpikeLoRA-X CAEPIA/LNAI paper and the orig
   year      = {2026},
   note      = {Code: https://github.com/bahgatayasi-lab/SpikeLoRA-X}
 }
-```
 
 ## License
 
