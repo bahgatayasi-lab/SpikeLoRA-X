@@ -134,16 +134,16 @@ If you use this code, please cite the SpikeLoRA-X CAEPIA/LNAI paper and the orig
 
 @inproceedings{ayasi2026spikelorax,
   title     = {SpikeLoRA-X: Explainable, Responsible, and Energy-Efficient Spiking Neural Networks for Multi-Horizon Renewable-Energy Forecasting at the Edge},
-
-  License
-This repository is released under the MIT License. This permits free reuse, modification, distribution, sublicensing, and use in academic, research, educational, and commercial projects, provided that the copyright notice and license text are preserved.
-
-Unless otherwise stated, the MIT License applies to the source code, scripts, documentation, and original repository materials. The cleaned benchmark CSV files are provided for reproducibility and reuse; users should also respect the licensing terms and citation requirements of the original data providers.
-
-See the LICENSE file for the full license text.
   author    = {Ayasi, Bahgat Waleed Deeb and coauthors},
   booktitle = {Proceedings of CAEPIA 2026},
   series    = {Lecture Notes in Artificial Intelligence},
   year      = {2026},
   note      = {Code: https://github.com/bahgatayasi-lab/SpikeLoRA-X}
 }
+## License
+This repository is released under the MIT License. This permits free reuse, modification, distribution, sublicensing, and use in academic, research, educational, and commercial projects, provided that the copyright notice and license text are preserved.
+
+Unless otherwise stated, the MIT License applies to the source code, scripts, documentation, and original repository materials. The cleaned benchmark CSV files are provided for reproducibility and reuse; users should also respect the licensing terms and citation requirements of the original data providers.
+
+See the LICENSE file for the full license text.
+
