@@ -147,8 +147,3 @@ This repository is released under the **MIT License**. This permits free reuse, 
 Unless otherwise stated, the MIT License applies to the source code, scripts, documentation, and original repository materials. The cleaned benchmark CSV files are provided for reproducibility and reuse; users should also respect the licensing terms and citation requirements of the original data providers.
 
 See the [`LICENSE`](LICENSE) file for the full license text.
-
-Unless otherwise stated, the MIT License applies to the source code, scripts, documentation, and original repository materials. The cleaned benchmark CSV files are provided for reproducibility and reuse; users should also respect the licensing terms and citation requirements of the original data providers.
-
-See the LICENSE file for the full license text.
-
