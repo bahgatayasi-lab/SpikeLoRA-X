@@ -140,7 +140,3 @@ If you use this code, please cite the SpikeLoRA-X CAEPIA/LNAI paper and the orig
   year      = {2026},
   note      = {Code: https://github.com/bahgatayasi-lab/SpikeLoRA-X}
 }
-
-## License
-
-Add a license file before final public release. If no license is added, external users do not have clear permission to reuse, modify, or redistribute the code.
