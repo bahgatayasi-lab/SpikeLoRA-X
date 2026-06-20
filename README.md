@@ -134,7 +134,7 @@ If you use this code, please cite the SpikeLoRA-X CAEPIA/LNAI paper and the orig
 
 @inproceedings{ayasi2026spikelorax,
   title     = {SpikeLoRA-X: Explainable, Responsible, and Energy-Efficient Spiking Neural Networks for Multi-Horizon Renewable-Energy Forecasting at the Edge},
-  author    = {Ayasi, Bahgat Waleed Deeb and coauthors},
+  author    = {Ayasi,Bahgat and coauthors},
   booktitle = {Proceedings of CAEPIA 2026},
   series    = {Lecture Notes in Artificial Intelligence},
   year      = {2026},
