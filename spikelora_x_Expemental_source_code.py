@@ -1553,7 +1553,7 @@ def make_latex_ready_tables():
 
 # ===============================
 # Cell 11: Spike-Attribution Module
-# Corrected for restored SpikingTCN / SpikeLoRA-X
+# Occlusion-based horizon-wise attribution for SpikeLoRA-X
 # ===============================
 
 import numpy as np
@@ -1579,70 +1579,107 @@ def compute_spike_attribution(
     X_input,
     horizon_labels=None,
     max_samples=512,
-    device=device
+    device=device,
+    occlusion_value=0.0,
+    batch_size=128,
+    normalize=True
 ):
     """
-    Computes horizon-wise feature attribution for SNN forecasting.
+    Computes horizon-wise feature attribution for SNN forecasting using
+    occlusion sensitivity.
 
     Method:
-    - Uses gradient × input attribution.
-    - Aggregates over the temporal lookback dimension.
-    - Returns heatmap with shape [num_features, num_horizons].
+    - Run the trained model once to obtain baseline predictions.
+    - For each input feature f, replace that feature over the full lookback
+      window with an occlusion value.
+    - Measure the absolute prediction change at each forecast horizon.
+    - Return a heatmap with shape [num_features, num_horizons].
 
-    This is safer than directly correlating hidden spikes because different
-    SNN modules have different internal shapes.
+    For the standardized inputs used in this script, occlusion_value=0.0
+    corresponds to replacing a feature by its training-set mean. This matches
+    the SpikeLoRA-X manuscript definition of occlusion-based horizon-wise
+    attribution and avoids relying on direct input gradients through hard
+    threshold spike encoders.
 
     Input:
         X_input: numpy array or tensor with shape [N, L, F]
+        horizon_labels: optional labels for horizons; kept for API compatibility
+        max_samples: maximum number of samples used for attribution
+        occlusion_value: scalar replacement value, or length-F array of values
+        batch_size: batch size used for repeated forward passes
+        normalize: if True, normalize each horizon column to [0, 1]
 
     Output:
-        heatmap: [F, K]
+        heatmap: numpy array with shape [F, K]
+                 heatmap[f, k] = mean_i |y_hat_i,k - y_hat_i,k(-f)|
     """
+
+    del horizon_labels  # labels are used by the plotting function, not here
 
     model.eval()
     reset_snn_state(model)
 
     if isinstance(X_input, np.ndarray):
-        X = torch.tensor(X_input, dtype=torch.float32)
+        X_cpu = torch.tensor(X_input, dtype=torch.float32)
     else:
-        X = X_input.detach().clone().float()
+        X_cpu = X_input.detach().clone().float().cpu()
 
-    if X.shape[0] > max_samples:
-        X = X[:max_samples]
+    if X_cpu.ndim != 3:
+        raise ValueError(
+            f"X_input must have shape [N, L, F], but got {tuple(X_cpu.shape)}"
+        )
 
-    X = X.to(device)
-    X.requires_grad_(True)
+    if max_samples is not None and X_cpu.shape[0] > max_samples:
+        X_cpu = X_cpu[:max_samples].clone()
+    else:
+        X_cpu = X_cpu.clone()
 
-    preds = model(X)   # [B, K]
-    K = preds.shape[-1]
-    Fdim = X.shape[-1]
+    N, L, Fdim = X_cpu.shape
+
+    if batch_size is None or batch_size <= 0:
+        batch_size = N
+
+    if np.isscalar(occlusion_value):
+        occlusion_values = np.full(Fdim, float(occlusion_value), dtype=np.float32)
+    else:
+        occlusion_values = np.asarray(occlusion_value, dtype=np.float32).reshape(-1)
+        if occlusion_values.shape[0] != Fdim:
+            raise ValueError(
+                "occlusion_value must be a scalar or a length-F array, "
+                f"but got length {occlusion_values.shape[0]} for F={Fdim}"
+            )
+
+    @torch.no_grad()
+    def _predict_tensor_batches(X_tensor_cpu):
+        preds = []
+        for start_idx in range(0, X_tensor_cpu.shape[0], batch_size):
+            xb = X_tensor_cpu[start_idx:start_idx + batch_size].to(device)
+            reset_snn_state(model)
+            pred = model(xb)
+            preds.append(pred.detach().cpu())
+            reset_snn_state(model)
+        return torch.cat(preds, dim=0)
+
+    baseline_preds = _predict_tensor_batches(X_cpu)  # [N, K]
+    K = baseline_preds.shape[-1]
 
     heatmap = np.zeros((Fdim, K), dtype=np.float32)
 
-    for k in range(K):
-        model.zero_grad(set_to_none=True)
-        reset_snn_state(model)
+    for f_idx in range(Fdim):
+        X_occ = X_cpu.clone()
+        X_occ[:, :, f_idx] = float(occlusion_values[f_idx])
 
-        score = preds[:, k].mean()
-        score.backward(retain_graph=True)
+        occ_preds = _predict_tensor_batches(X_occ)  # [N, K]
+        attr_f = (baseline_preds - occ_preds).abs().mean(dim=0).numpy()
+        heatmap[f_idx, :] = attr_f
 
-        # Gradient x input: [B, L, F]
-        attr = (X.grad * X).detach().abs()
-
-        # Average over batch and lookback -> [F]
-        attr_f = attr.mean(dim=(0, 1)).cpu().numpy()
-
-        heatmap[:, k] = attr_f
-
-        X.grad.zero_()
-
-    # Normalize each horizon for readability
-    heatmap = heatmap / (heatmap.max(axis=0, keepdims=True) + 1e-8)
+    if normalize:
+        denom = heatmap.max(axis=0, keepdims=True)
+        heatmap = heatmap / (denom + 1e-8)
 
     reset_snn_state(model)
 
     return heatmap
-
 
 def compute_spike_activity_summary(model, X_input, max_samples=512, device=device):
     """
@@ -1943,7 +1980,7 @@ def plot_spike_attribution(
     plt.figure(figsize=(10, max(5, 0.35 * len(feature_names))))
 
     im = plt.imshow(heatmap, aspect="auto")
-    plt.colorbar(im, label="Normalized attribution")
+    plt.colorbar(im, label="Normalized occlusion attribution")
 
     plt.xticks(np.arange(len(horizon_labels)), horizon_labels)
     plt.yticks(np.arange(len(feature_names)), feature_names)
@@ -2142,13 +2179,15 @@ def topk_feature_masking_fidelity(
     top_k=3,
     random_repeats=5,
     batch_size=128,
-    seed=0
+    seed=0,
+    mask_value=0.0
 ):
     """
-    Tests whether attribution is meaningful:
-    - Mask top-k attributed features.
-    - Mask random-k features.
-    - If top-k masking hurts more, attribution has fidelity.
+    Tests whether the occlusion attribution is meaningful:
+    - Mask top-k attributed features using mask_value. By default, mask_value
+      is 0.0, which is the training-set mean after standardization.
+    - Mask random-k features with the same procedure.
+    - If top-k masking hurts more, the attribution has fidelity.
     """
 
     rng = np.random.default_rng(seed)
@@ -2162,7 +2201,7 @@ def topk_feature_masking_fidelity(
     top_idx = np.argsort(global_attr)[::-1][:top_k]
 
     X_top = Xte.copy()
-    X_top[:, :, top_idx] = 0.0
+    X_top[:, :, top_idx] = mask_value
 
     top_preds = predict_numpy(model, X_top, batch_size=batch_size)
     top_rmse = rmse_np(Yte, top_preds)
@@ -2179,7 +2218,7 @@ def topk_feature_masking_fidelity(
         rand_idx = rng.choice(all_idx, size=top_k, replace=False)
 
         X_rand = Xte.copy()
-        X_rand[:, :, rand_idx] = 0.0
+        X_rand[:, :, rand_idx] = mask_value
 
         rand_preds = predict_numpy(model, X_rand, batch_size=batch_size)
 
@@ -2262,7 +2301,7 @@ def run_caepea_main_experiment(
     """
     Main CAEPIA/CAEPEA experiment:
     - Train SpikeLoRA-X.
-    - Generate spike-attribution heatmap.
+    - Generate occlusion-based horizon-wise attribution heatmap.
     - Run attribution fidelity masking.
     - Run physical plausibility analysis.
     - Save CSVs and figures.
@@ -2310,7 +2349,10 @@ def run_caepea_main_experiment(
             X_input=data["Xte"][:512],
             horizon_labels=horizon_labels,
             max_samples=512,
-            device=device
+            device=device,
+            occlusion_value=0.0,
+            batch_size=batch_size,
+            normalize=True
         )
 
         heatmap_df = pd.DataFrame(
@@ -2328,7 +2370,7 @@ def run_caepea_main_experiment(
             heatmap,
             feature_names=feature_names,
             horizon_labels=horizon_labels,
-            title=f"SpikeLoRA-X Horizon-wise Attribution — {task_id}",
+            title=f"SpikeLoRA-X Occlusion-Based Horizon-wise Attribution — {task_id}",
             save_path=heatmap_png
         )
 
