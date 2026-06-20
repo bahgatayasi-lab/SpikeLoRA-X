@@ -1,0 +1,2 @@
+Cloud Type -15	Cloud Type 0	Cloud Type 1	Cloud Type 2	Cloud Type 3	Cloud Type 4	Cloud Type 5	Cloud Type 6	Cloud Type 7	Cloud Type 8	Cloud Type 9	Cloud Type 10	Cloud Type 11	Cloud Type 12
+N/A	Clear	Probably Clear	Fog	Water	Super-Cooled Water	Mixed	Opaque Ice	Cirrus	Overlapping	Overshooting	Unknown	Dust	Smoke
